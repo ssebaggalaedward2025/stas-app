@@ -53,7 +53,7 @@ export default function DashboardHero() {
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-(--border-primary) bg-(--bg-secondary)/80 px-3 py-1 text-xs font-medium text-(--accent-primary)">
             <Compass className="h-3.5 w-3.5" />
-            Kampala traffic command center
+            Smart Traffic Alert System
           </div>
           <h2 className="mt-3 text-xl font-semibold text-(--text-primary)">
             Stay ahead of congestion, incidents, and route disruptions.
