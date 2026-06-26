@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  AlertTriangle, BarChart2, Bell, CheckCircle,
+  AlertTriangle, Bell, CheckCircle,
   Clock, Cog, FileDown, Home, Map as MapIcon, Navigation,
   ShieldCheck, TriangleAlert, XCircle,
 } from 'lucide-react'
@@ -66,13 +66,11 @@ function OfficerSidebar() {
   const pendingCount = incidents.filter((i) => i.status === 'PENDING').length
 
   const items = [
-    { to: '/officer/dashboard', label: 'Dashboard',       icon: <Home          className="h-4 w-4" />, end: true },
-    { to: '/map',               label: 'Live Map',         icon: <MapIcon       className="h-4 w-4" /> },
-    { to: '/report',            label: 'File Incident',    icon: <AlertTriangle className="h-4 w-4" />, badge: pendingCount },
-    { to: '/analytics',         label: 'Analytics',        icon: <BarChart2     className="h-4 w-4" /> },
-    { to: '/planner',           label: 'Route Planner',    icon: <Navigation    className="h-4 w-4" /> },
-    { to: '/alerts',            label: 'Alerts',           icon: <Bell          className="h-4 w-4" /> },
-    { to: '/settings',          label: 'Settings',         icon: <Cog           className="h-4 w-4" /> },
+    { to: '/officer/dashboard', label: 'Dashboard',    icon: <Home          className="h-4 w-4" />, end: true },
+    { to: '/map',               label: 'Live Map',      icon: <MapIcon       className="h-4 w-4" /> },
+    { to: '/planner',           label: 'Route Planner', icon: <Navigation    className="h-4 w-4" /> },
+    { to: '/alerts',            label: 'Alerts',        icon: <Bell          className="h-4 w-4" />, badge: pendingCount },
+    { to: '/settings',          label: 'Settings',      icon: <Cog           className="h-4 w-4" /> },
   ]
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -282,10 +280,6 @@ function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
             <FileDown className="h-3 w-3" />
             {typeFilter === 'ALL' ? 'Download PDF' : `Download ${typeFilter} PDF`}
           </button>
-          <Link to="/report" className="text-[10px] px-2 py-1 rounded text-(--accent-primary)"
-            style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
-            + File New
-          </Link>
         </div>
       </div>
 
@@ -351,6 +345,7 @@ function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
               </span>
             </div>
             <p className="text-[11px] text-(--text-secondary) mb-2 line-clamp-2">{inc.description}</p>
+            {/* Action buttons */}
             <div className="flex items-center gap-1.5">
               {inc.status === 'PENDING' && (
                 <>
@@ -359,32 +354,72 @@ function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
                     onClick={() => void verify(inc.id)}
                     className="h-6 px-2 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
                     style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', color: '#3b82f6' }}>
-                    <CheckCircle className="h-3 w-3" />
-                    Verify
+                    <CheckCircle className="h-3 w-3" /> Verify
                   </button>
                   <button type="button"
                     disabled={loading !== null}
                     onClick={() => void setStatus(inc.id, 'REJECTED')}
                     className="h-6 px-2 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
-                    style={{ background: 'rgba(107,114,128,0.12)', border: '1px solid rgba(107,114,128,0.3)', color: '#6b7280' }}>
-                    <XCircle className="h-3 w-3" />
-                    Reject
+                    style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                    <XCircle className="h-3 w-3" /> Reject
                   </button>
                 </>
               )}
               {inc.status === 'VERIFIED' && (
-                <button type="button"
-                  disabled={loading !== null}
-                  onClick={() => void setStatus(inc.id, 'RESOLVED')}
-                  className="h-6 px-2 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
-                  style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
-                  <CheckCircle className="h-3 w-3" />
-                  Resolve
-                </button>
+                <>
+                  <button type="button"
+                    disabled={loading !== null}
+                    onClick={() => void setStatus(inc.id, 'RESOLVED')}
+                    className="h-6 px-2 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
+                    style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
+                    <CheckCircle className="h-3 w-3" /> Resolve
+                  </button>
+                  <button type="button"
+                    disabled={loading !== null}
+                    onClick={() => void setStatus(inc.id, 'REJECTED')}
+                    className="h-6 px-2 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
+                    style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                    <XCircle className="h-3 w-3" /> Reject
+                  </button>
+                </>
               )}
               <span className="ml-auto text-[10px] text-(--text-tertiary)" style={{ fontFamily: 'var(--font-mono)' }}>
                 {new Date(inc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
+            </div>
+
+            {/* Reporter details — shown below action buttons for officer feedback */}
+            <div
+              className="mt-2 pt-2 flex items-start gap-1.5 border-t"
+              style={{ borderColor: 'var(--border-subtle)' }}
+            >
+              <ShieldCheck className="h-3 w-3 shrink-0 mt-0.5 text-(--text-tertiary)" />
+              {inc.isAnonymous ? (
+                <span className="text-[10px] text-(--text-tertiary) italic">
+                  Anonymous submission — no contact details available
+                </span>
+              ) : inc.reporterName || inc.reporterEmail ? (
+                <div className="flex flex-col gap-0.5">
+                  {inc.reporterName && (
+                    <span className="text-[10px] text-(--text-secondary) font-semibold">
+                      {inc.reporterName}
+                    </span>
+                  )}
+                  {inc.reporterEmail && (
+                    <a
+                      href={`mailto:${inc.reporterEmail}`}
+                      className="text-[10px] transition-colors"
+                      style={{ color: 'var(--accent-primary)' }}
+                    >
+                      {inc.reporterEmail}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <span className="text-[10px] text-(--text-tertiary) italic">
+                  Reporter details unavailable
+                </span>
+              )}
             </div>
           </div>
         ))}

@@ -3,16 +3,20 @@ import type { Incident, Prediction } from '../store/useAppStore'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapIncident(raw: any): Incident {
   return {
-    id:          raw.id,
-    routeId:     raw.route_id ?? null,
-    type:        raw.type,
-    severity:    raw.severity,
-    latitude:    raw.latitude,
-    longitude:   raw.longitude,
-    address:     raw.address ?? '',
-    description: raw.description,
-    status:      raw.status,
-    createdAt:   raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    id:            raw.id,
+    routeId:       raw.route_id ?? null,
+    type:          raw.type,
+    severity:      raw.severity,
+    latitude:      raw.latitude,
+    longitude:     raw.longitude,
+    address:       raw.address ?? '',
+    description:   raw.description,
+    status:        raw.status,
+    createdAt:     raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    isAnonymous:   raw.is_anonymous ?? false,
+    reportedBy:    raw.reported_by ?? null,
+    reporterName:  raw.reporter?.full_name ?? null,
+    reporterEmail: raw.reporter?.email ?? null,
   }
 }
 

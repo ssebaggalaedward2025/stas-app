@@ -35,7 +35,11 @@ incidentsRouter.get('/', optionalAuth, async (req, res, next) => {
     const { route_id, type, severity, status: statusQ, limit = '50' } = req.query
 
     if (isConfigured) {
-      let query = supabaseAdmin.from('incidents').select('*').order('created_at', { ascending: false }).limit(Number(limit))
+      let query = supabaseAdmin
+        .from('incidents')
+        .select('*, reporter:users!reported_by(id, email, full_name)')
+        .order('created_at', { ascending: false })
+        .limit(Number(limit))
       if (route_id)  query = query.eq('route_id', route_id)
       if (type)      query = query.eq('type', type)
       if (severity)  query = query.eq('severity', severity)

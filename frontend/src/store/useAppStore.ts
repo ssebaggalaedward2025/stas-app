@@ -27,6 +27,10 @@ export type Incident = {
   description: string
   status: 'PENDING' | 'VERIFIED' | 'RESOLVED' | 'REJECTED'
   createdAt: string
+  isAnonymous: boolean
+  reportedBy: string | null
+  reporterName: string | null
+  reporterEmail: string | null
 }
 
 type AppState = {
