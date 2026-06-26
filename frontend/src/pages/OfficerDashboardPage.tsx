@@ -189,11 +189,25 @@ ${rows}
   setTimeout(() => win.print(), 600)
 }
 
+type IncidentType = 'ALL' | 'JAM' | 'ACCIDENT' | 'WORKS' | 'FLOODING' | 'LIGHT' | 'CONVOY' | 'OTHER'
+
+const TYPE_FILTERS: { key: IncidentType; label: string; color: string }[] = [
+  { key: 'ALL',      label: 'All',      color: '#6b7280' },
+  { key: 'ACCIDENT', label: 'Accident', color: '#ef4444' },
+  { key: 'FLOODING', label: 'Flooding', color: '#3b82f6' },
+  { key: 'JAM',      label: 'Jam',      color: '#f97316' },
+  { key: 'WORKS',    label: 'Works',    color: '#eab308' },
+  { key: 'LIGHT',    label: 'Light',    color: '#a855f7' },
+  { key: 'CONVOY',   label: 'Convoy',   color: '#14b8a6' },
+  { key: 'OTHER',    label: 'Other',    color: '#6b7280' },
+]
+
 function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
   const storeIncidents = useAppStore((s) => s.incidents)
   const updateIncident = useAppStore((s) => s.updateIncident)
-  const [loading, setLoading] = useState<string | null>(null)
-  const [toast,   setToast]   = useState<string | null>(null)
+  const [loading,    setLoading]    = useState<string | null>(null)
+  const [toast,      setToast]      = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<IncidentType>('ALL')
 
   function showToast(msg: string) {
     setToast(msg)
@@ -228,7 +242,13 @@ function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
     }
   }
 
-  const queue = storeIncidents.filter((i) => i.status === 'PENDING' || i.status === 'VERIFIED')
+  // Active queue = PENDING + VERIFIED, then filtered by incident type
+  const activeQueue = storeIncidents.filter((i) => i.status === 'PENDING' || i.status === 'VERIFIED')
+  const queue = typeFilter === 'ALL'
+    ? activeQueue
+    : activeQueue.filter((i) => i.type === typeFilter)
+
+  const activeColor = TYPE_FILTERS.find((f) => f.key === typeFilter)?.color ?? '#6b7280'
 
   return (
     <GlassCard className="overflow-hidden">
@@ -239,22 +259,28 @@ function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
         </div>
       )}
 
+      {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-(--border-subtle)">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-[#f97316]" />
           <span className="text-sm font-semibold text-(--text-primary)">Incident Queue</span>
-          <span className="text-[10px] text-(--text-tertiary)">({queue.length})</span>
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: activeColor + '22', color: activeColor }}
+          >
+            {queue.length}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => downloadIncidentsPDF(storeIncidents)}
-            title="Download all incidents as PDF"
+            onClick={() => downloadIncidentsPDF(queue)}
+            title={`Download ${typeFilter === 'ALL' ? 'all' : typeFilter} incidents as PDF`}
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded transition-colors"
             style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}
           >
             <FileDown className="h-3 w-3" />
-            Download PDF
+            {typeFilter === 'ALL' ? 'Download PDF' : `Download ${typeFilter} PDF`}
           </button>
           <Link to="/report" className="text-[10px] px-2 py-1 rounded text-(--accent-primary)"
             style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
@@ -263,9 +289,48 @@ function IncidentQueue({ onUpdate }: { onUpdate: () => void }) {
         </div>
       </div>
 
+      {/* ── Type filter tabs ── */}
+      <div className="px-3 py-2 flex flex-wrap gap-1.5 border-b border-(--border-subtle)"
+        style={{ background: 'rgba(0,0,0,0.1)' }}>
+        {TYPE_FILTERS.map(({ key, label, color }) => {
+          const count = key === 'ALL'
+            ? activeQueue.length
+            : activeQueue.filter((i) => i.type === key).length
+          const active = typeFilter === key
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTypeFilter(key)}
+              className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all"
+              style={{
+                background:  active ? color + '22' : 'transparent',
+                border:      `1px solid ${active ? color : 'var(--border-subtle)'}`,
+                color:       active ? color : 'var(--text-tertiary)',
+                boxShadow:   active ? `0 0 8px ${color}44` : 'none',
+              }}
+            >
+              {label}
+              {count > 0 && (
+                <span
+                  className="rounded-full px-1 py-0 font-bold"
+                  style={{ background: active ? color : 'var(--border-subtle)',
+                           color: active ? '#fff' : 'var(--text-tertiary)', fontSize: 9 }}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Incident list ── */}
       <div className="divide-y divide-(--border-subtle) max-h-96 overflow-y-auto">
         {queue.length === 0 && (
-          <p className="px-4 py-6 text-xs text-(--text-tertiary) text-center">No active incidents</p>
+          <p className="px-4 py-6 text-xs text-(--text-tertiary) text-center">
+            {typeFilter === 'ALL' ? 'No active incidents' : `No active ${typeFilter} incidents`}
+          </p>
         )}
         {queue.map((inc) => (
           <div key={inc.id} className="px-4 py-3">
