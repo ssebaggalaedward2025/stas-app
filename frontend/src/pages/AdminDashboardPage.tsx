@@ -197,26 +197,27 @@ function UserPanel({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — light tint so map stays visible */}
       <div
         className="fixed inset-0 z-40 transition-opacity duration-300"
         style={{
-          background: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(2px)',
+          background: 'rgba(0,0,0,0.25)',
           opacity: open ? 1 : 0,
           pointerEvents: open ? 'auto' : 'none',
         }}
         onClick={onClose}
       />
 
-      {/* Drawer */}
+      {/* Drawer — glass effect so the live map shows through */}
       <div
         className="fixed top-0 right-0 h-full z-50 flex flex-col"
         style={{
-          width: 'min(420px, 100vw)',
-          background: 'var(--bg-primary)',
-          borderLeft: '1px solid var(--border-subtle)',
-          boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
+          width: 'min(460px, 100vw)',
+          background: 'rgba(8,13,26,0.72)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderLeft: '1px solid rgba(0,212,255,0.2)',
+          boxShadow: '-8px 0 40px rgba(0,0,0,0.5), inset -1px 0 0 rgba(0,212,255,0.1)',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
         }}
