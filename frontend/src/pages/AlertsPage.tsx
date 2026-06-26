@@ -20,8 +20,9 @@ const FILTER_TABS: { key: Filter; label: string }[] = [
 export default function AlertsPage() {
   const incidents   = useAppStore((s) => s.incidents)
   const predictions = useAppStore((s) => s.predictions)
-  const [filter, setFilter]   = useState<Filter>('ALL')
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [filter, setFilter]     = useState<Filter>('ALL')
+  const [readIds, setReadIds]   = useState<Set<string>>(new Set())
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   // Build alerts from incidents + predictions
   const alerts = [
@@ -131,51 +132,100 @@ export default function AlertsPage() {
             ) : (
               <div className="divide-y divide-(--border-subtle)">
                 {filtered.map((alert) => {
-                  const isRead = readIds.has(alert.id)
+                  const isRead    = readIds.has(alert.id)
+                  const isOpen    = expanded === alert.id
+                  const col       = levelColor[alert.level]
                   return (
-                    <div
-                      key={alert.id}
-                      className="flex items-start gap-3 px-4 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors cursor-pointer"
-                      onClick={() => setReadIds((prev) => new Set([...prev, alert.id]))}
-                    >
-                      {/* Icon */}
+                    <div key={alert.id}>
+                      {/* Row */}
                       <div
-                        className="h-8 w-8 rounded-lg shrink-0 flex items-center justify-center mt-0.5"
-                        style={{
-                          background: `${levelColor[alert.level]}18`,
-                          border: `1px solid ${levelColor[alert.level]}44`,
-                          color: levelColor[alert.level],
+                        className="flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer select-none"
+                        style={{ background: isOpen ? `${col}08` : undefined }}
+                        onClick={() => {
+                          setExpanded(isOpen ? null : alert.id)
+                          setReadIds((prev) => new Set([...prev, alert.id]))
                         }}
                       >
-                        {alert.icon}
-                      </div>
-
-                      {/* Body */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="text-sm font-medium text-(--text-primary) truncate"
-                            style={{ opacity: isRead ? 0.6 : 1 }}
-                          >
-                            {alert.title}
-                          </span>
-                          {!isRead && (
-                            <span
-                              className="h-1.5 w-1.5 rounded-full shrink-0"
-                              style={{ background: levelColor[alert.level] }}
-                            />
-                          )}
+                        {/* Icon */}
+                        <div
+                          className="h-8 w-8 rounded-lg shrink-0 flex items-center justify-center mt-0.5"
+                          style={{
+                            background: `${col}18`,
+                            border: `1px solid ${col}44`,
+                            color: col,
+                          }}
+                        >
+                          {alert.icon}
                         </div>
-                        <p className="text-xs text-(--text-tertiary) mt-0.5 line-clamp-2">{alert.body}</p>
+
+                        {/* Body */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="text-sm font-medium text-(--text-primary)"
+                              style={{ opacity: isRead ? 0.6 : 1 }}
+                            >
+                              {alert.title}
+                            </span>
+                            {!isRead && (
+                              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: col }} />
+                            )}
+                            <span
+                              className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: `${col}20`, color: col }}
+                            >
+                              {alert.level}
+                            </span>
+                          </div>
+                          <p className="text-xs text-(--text-tertiary) mt-0.5">{alert.body}</p>
+                        </div>
+
+                        {/* Time + chevron */}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="text-[10px] text-(--text-tertiary)" style={{ fontFamily: 'var(--font-mono)' }}>
+                            {timeAgo(alert.time)}
+                          </span>
+                          <span className="text-[10px] text-(--text-tertiary)">{isOpen ? '▲' : '▼'}</span>
+                        </div>
                       </div>
 
-                      {/* Time */}
-                      <span
-                        className="text-[10px] text-(--text-tertiary) shrink-0 mt-0.5"
-                        style={{ fontFamily: 'var(--font-mono)' }}
-                      >
-                        {timeAgo(alert.time)}
-                      </span>
+                      {/* Expanded detail panel */}
+                      {isOpen && (
+                        <div
+                          className="px-5 pb-4 pt-2 flex flex-col gap-2"
+                          style={{ background: `${col}06`, borderTop: `1px solid ${col}22` }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: col }}>
+                              Alert Detail
+                            </span>
+                            <div className="flex-1 h-px" style={{ background: `${col}30` }} />
+                          </div>
+                          <p className="text-sm text-(--text-secondary) leading-relaxed">{alert.body}</p>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-(--text-tertiary)" style={{ fontFamily: 'var(--font-mono)' }}>
+                            <span>🕐 {new Date(alert.time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                            <span style={{ color: col }}>● {alert.level}</span>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setExpanded(null) }}
+                              className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                              style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+                            >
+                              Close
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setReadIds((prev) => new Set([...prev, alert.id])) }}
+                              className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+                              style={{ background: `${col}18`, border: `1px solid ${col}44`, color: col }}
+                            >
+                              Mark Read
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

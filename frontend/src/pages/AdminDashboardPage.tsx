@@ -197,28 +197,27 @@ function UserPanel({
 
   return (
     <>
-      {/* Backdrop — semi-transparent so map is visible behind */}
+      {/* Backdrop — above all Leaflet layers (max z-index 1000) */}
       <div
-        className="fixed inset-0 z-40 transition-opacity duration-300"
+        className="fixed inset-0 transition-opacity duration-300"
         style={{
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(3px)',
+          zIndex: 1050,
+          background: 'rgba(0,0,0,0.55)',
           opacity: open ? 1 : 0,
           pointerEvents: open ? 'auto' : 'none',
         }}
         onClick={onClose}
       />
 
-      {/* Drawer — solid enough for readable form, map visible through backdrop */}
+      {/* Drawer — z-index above backdrop, fully solid so nothing bleeds through */}
       <div
-        className="fixed top-0 right-0 h-full z-50 flex flex-col"
+        className="fixed top-0 right-0 h-full flex flex-col"
         style={{
+          zIndex: 1100,
           width: 'min(460px, 100vw)',
           background: 'var(--bg-primary)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          borderLeft: '1px solid rgba(0,212,255,0.25)',
-          boxShadow: '-12px 0 48px rgba(0,0,0,0.6)',
+          borderLeft: '1px solid rgba(0,212,255,0.2)',
+          boxShadow: '-12px 0 48px rgba(0,0,0,0.7)',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
         }}
