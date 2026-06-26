@@ -50,11 +50,13 @@ authRouter.post('/register', async (req, res, next) => {
         return res.status(status).json({ error: error.message })
       }
 
-      // Mirror into public.users for app queries
-      await supabaseAdmin.from('users').upsert({
-        id: data.user.id, email: body.email,
-        full_name: body.full_name, role: 'CITIZEN', phone: body.phone || null,
-      })
+      // Mirror into public.users — best-effort, auth always succeeds regardless
+      try {
+        await supabaseAdmin.from('users').upsert(
+          { id: data.user.id, email: body.email, full_name: body.full_name, role: 'CITIZEN', phone: body.phone || null },
+          { onConflict: 'id', ignoreDuplicates: false }
+        )
+      } catch (_) { /* non-critical */ }
 
       const token = _signToken({ id: data.user.id, email: body.email, role: 'CITIZEN', full_name: body.full_name })
       return res.status(201).json({

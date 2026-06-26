@@ -45,11 +45,26 @@ adminRouter.patch('/users/:id/role', async (req, res, next) => {
       return res.status(400).json({ error: 'Cannot change your own role' })
 
     if (isConfigured) {
-      const { data, error } = await supabaseAdmin
-        .from('users').update({ role }).eq('id', id).select().single()
-      if (error || !data) return res.status(404).json({ error: 'User not found' })
-      await supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: { role } })
-      return res.json(data)
+      // Verify user exists in Supabase Auth first
+      const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.getUserById(id)
+      if (authErr || !authData?.user) return res.status(404).json({ error: 'User not found' })
+
+      const u = authData.user
+      // Upsert into public.users — creates row if trigger had previously failed
+      await supabaseAdmin.from('users').upsert(
+        {
+          id: u.id,
+          email: u.email,
+          full_name: u.user_metadata?.full_name || u.email?.split('@')[0] || '',
+          role,
+        },
+        { onConflict: 'id', ignoreDuplicates: false }
+      )
+
+      // Keep auth metadata in sync
+      await supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: { ...u.user_metadata, role } })
+
+      return res.json({ id: u.id, email: u.email, full_name: u.user_metadata?.full_name || '', role })
     }
 
     const user = devUsers.find((u) => u.id === id)
