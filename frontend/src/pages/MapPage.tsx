@@ -12,7 +12,7 @@ import LocationSearchInput from '../components/ui/LocationSearchInput'
 import { RoadLayerStatusBar, RoadCongestionLegend, type LoadState } from '../components/map/UgandaRoadLayer'
 import { useAppStore } from '../store/useAppStore'
 import { useTheme } from '../context/ThemeContext'
-import { fetchOsrmRoutes, scoreAndLabel, fmtDist, fmtDuration, maneuverIcon, type RawRoute } from '../api/routing'
+import { fetchOsrmRoutes, scoreAndLabel, nameRouteWaypoints, fmtDist, fmtDuration, maneuverIcon, type RawRoute } from '../api/routing'
 import { reverseGeocode, type LocationSuggestion } from '../api/nominatim'
 
 
@@ -104,6 +104,20 @@ export default function MapPage() {
     () => scoreAndLabel(rawRoutes, predictions),
     [rawRoutes, predictions],
   )
+
+  // Named waypoints for the recommended route, e.g. "Busega → Masanafu → Buloba"
+  const [recommendedName, setRecommendedName] = useState<string | null>(null)
+  const recommendedRoute = routeResults.find((r) => r.label === 'RECOMMENDED')
+  useEffect(() => {
+    if (!recommendedRoute) { setRecommendedName(null); return }
+    let cancelled = false
+    setRecommendedName(null)
+    nameRouteWaypoints(recommendedRoute.geometry)
+      .then((names) => { if (!cancelled && names.length) setRecommendedName(names.join(' → ')) })
+      .catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawRoutes, recommendedRoute?.index])
 
   // Keep "X ago" label fresh every 30 s
   useEffect(() => {
@@ -503,6 +517,11 @@ export default function MapPage() {
                             <span className="text-xs font-bold" style={{ color }}>{r.label}</span>
                             <ScoreBadge score={r.congestionScore} />
                           </div>
+                          {r.label === 'RECOMMENDED' && (
+                            <div className="text-xs font-medium text-(--text-primary) truncate">
+                              {recommendedName ? `via ${recommendedName}` : 'Naming route…'}
+                            </div>
+                          )}
                           <div className="text-xs text-(--text-secondary)">
                             {fmtDist(r.distance)} · {fmtDuration(r.duration)}
                           </div>
@@ -734,6 +753,11 @@ export default function MapPage() {
                     <div className="flex-1">
                       <span className="text-xs font-bold mr-2" style={{ color }}>{r.label}</span>
                       <span className="text-xs text-(--text-secondary)">{fmtDist(r.distance)} · {fmtDuration(r.duration)}</span>
+                      {r.label === 'RECOMMENDED' && (
+                        <div className="text-xs font-medium text-(--text-primary) truncate">
+                          {recommendedName ? `via ${recommendedName}` : 'Naming route…'}
+                        </div>
+                      )}
                       {r.label === 'RECOMMENDED' && r.avoidsRoad && (
                         <div
                           className="mt-1 text-[10px] px-1.5 py-0.5 rounded inline-block"

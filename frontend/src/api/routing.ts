@@ -1,5 +1,6 @@
 import { KAMPALA_ROUTES } from '../utils/kampalaRoutes'
 import { UGANDA_ROUTES } from '../utils/ugandaRoutes'
+import { reverseGeocodeShortName } from './nominatim'
 import type { Prediction } from '../store/useAppStore'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -240,6 +241,39 @@ export async function fetchOsrmRoutes(
     }))
     return { index: idx, distance: Math.round(r.distance), duration: Math.round(r.duration), geometry, steps }
   })
+}
+
+// ── Route waypoint naming ──────────────────────────────────────────────────
+
+/**
+ * Sample a few points along a route's geometry (near-start, middle, near-end)
+ * and reverse-geocode each to a short place name, producing a human-readable
+ * route description such as "Busega → Masanafu → Buloba".
+ *
+ * Calls are sequential with a 1-second gap between them to respect
+ * Nominatim's public usage policy (max 1 request/second).
+ */
+export async function nameRouteWaypoints(
+  geometry: [number, number][],
+  signal?: AbortSignal,
+): Promise<string[]> {
+  if (geometry.length < 2) return []
+
+  const fractions = [0.08, 0.5, 0.92]
+  const names: string[] = []
+  const seen = new Set<string>()
+
+  for (let i = 0; i < fractions.length; i++) {
+    const idx = Math.min(geometry.length - 1, Math.floor(geometry.length * fractions[i]))
+    const [lat, lng] = geometry[idx]
+    const name = await reverseGeocodeShortName(lat, lng, signal)
+    if (name && !seen.has(name)) {
+      seen.add(name)
+      names.push(name)
+    }
+    if (i < fractions.length - 1) await new Promise((r) => setTimeout(r, 1000))
+  }
+  return names
 }
 
 // ── Formatters ────────────────────────────────────────────────────────────

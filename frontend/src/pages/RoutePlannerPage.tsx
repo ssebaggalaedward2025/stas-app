@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp,
   Crosshair, Loader2, Navigation, RefreshCw, RotateCcw, Zap,
@@ -12,7 +12,7 @@ import MapView from '../components/map/MapView'
 import LocationSearchInput from '../components/ui/LocationSearchInput'
 import { useAppStore } from '../store/useAppStore'
 import {
-  fetchOsrmRoutes, scoreAndLabel, fmtDist, fmtDuration, maneuverIcon,
+  fetchOsrmRoutes, scoreAndLabel, nameRouteWaypoints, fmtDist, fmtDuration, maneuverIcon,
   type RawRoute, type RouteResult,
 } from '../api/routing'
 import { reverseGeocode, type LocationSuggestion } from '../api/nominatim'
@@ -65,8 +65,8 @@ function ugandaCongestionSummary() {
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function RouteCard({
-  r, active, onClick,
-}: { r: RouteResult; active: boolean; onClick: () => void }) {
+  r, active, onClick, routeName,
+}: { r: RouteResult; active: boolean; onClick: () => void; routeName?: string | null }) {
   const color = LABEL_COLOR[r.label]
   const bg    = LABEL_BG[r.label]
   const cScore = r.congestionScore
@@ -94,6 +94,11 @@ function RouteCard({
           {congestionLabel(cScore)} traffic
         </span>
       </div>
+      {r.label === 'RECOMMENDED' && (
+        <div className="text-xs font-medium mb-1 truncate" style={{ color: 'var(--text-primary)' }}>
+          {routeName ? `via ${routeName}` : 'Naming route…'}
+        </div>
+      )}
       <div className="flex gap-4 text-sm" style={{ color: 'var(--text-primary)' }}>
         <span><strong>{fmtDist(r.distance)}</strong></span>
         <span><strong>{fmtDuration(r.duration)}</strong></span>
@@ -191,6 +196,19 @@ export default function RoutePlannerPage() {
   )
 
   const recommendedRoute = routeResults.find((r) => r.label === 'RECOMMENDED') ?? routeResults[0]
+
+  // Named waypoints for the recommended route, e.g. "Busega → Masanafu → Buloba"
+  const [recommendedName, setRecommendedName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!recommendedRoute) { setRecommendedName(null); return }
+    let cancelled = false
+    setRecommendedName(null)
+    nameRouteWaypoints(recommendedRoute.geometry)
+      .then((names) => { if (!cancelled && names.length) setRecommendedName(names.join(' → ')) })
+      .catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawRoutes, recommendedRoute?.index])
   const activeRoute      = routeResults.find((r) => r.index === activeRouteIdx)
   const canPlan          = !!originPin && !!destPin
 
@@ -446,6 +464,7 @@ export default function RoutePlannerPage() {
                           r={r}
                           active={r.index === activeRouteIdx}
                           onClick={() => setActiveRouteIdx(r.index)}
+                          routeName={r.label === 'RECOMMENDED' ? recommendedName : null}
                         />
                       ))}
                   </div>

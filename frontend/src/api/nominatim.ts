@@ -82,3 +82,34 @@ export async function reverseGeocode(
   const parts = (data.display_name as string).split(', ')
   return parts.slice(0, 3).join(', ')
 }
+
+/**
+ * Reverse-geocode to a single short place/suburb name (e.g. "Busega", "Masanafu")
+ * rather than a full address string. Used to label route waypoints along a path.
+ */
+export async function reverseGeocodeShortName(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const params = new URLSearchParams({
+    lat:            String(lat),
+    lon:            String(lng),
+    format:         'json',
+    addressdetails: '1',
+    zoom:           '14',
+  })
+  const url = `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
+  try {
+    const res = await fetch(url, { signal, headers: { 'Accept-Language': 'en' } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const a = data.address ?? {}
+    return (
+      a.suburb || a.neighbourhood || a.village || a.town ||
+      a.city_district || a.municipality || a.county || a.road || null
+    )
+  } catch {
+    return null
+  }
+}
