@@ -98,6 +98,14 @@ function RouteCard({
         <span><strong>{fmtDist(r.distance)}</strong></span>
         <span><strong>{fmtDuration(r.duration)}</strong></span>
       </div>
+      {r.label === 'RECOMMENDED' && r.avoidsRoad && (
+        <div
+          className="mt-1.5 text-[11px] px-2 py-1 rounded inline-block"
+          style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.25)' }}
+        >
+          ✓ Avoids {r.avoidsRoad.name} ({r.avoidsRoad.status})
+        </div>
+      )}
       <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
         <div
           className="h-full rounded-full transition-all"

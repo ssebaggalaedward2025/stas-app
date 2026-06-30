@@ -24,6 +24,11 @@ export type RawRoute = {
 export type RouteResult = RawRoute & {
   congestionScore: number              // 0–100, lower = less congested
   label: 'RECOMMENDED' | 'SHORTEST' | 'ALTERNATIVE'
+  /** Name + status of the known monitored road this route's geometry overlaps most (OSRM-matched). */
+  matchedRoadName: string | null
+  matchedRoadStatus: string | null
+  /** For the RECOMMENDED route only — the heavily congested named road this route helps the commuter avoid. */
+  avoidsRoad: { name: string; status: string } | null
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -101,6 +106,48 @@ function calcCongestionScore(
   return hits === 0 ? 0 : Math.min(100, Math.round(total / hits))
 }
 
+type MatchedRoad = { name: string; status: string; congestionIndex: number }
+
+/**
+ * Identify which known monitored road (Kampala or Uganda-wide, using OSRM
+ * route geometry from fetchOsrmRoutes()) this route overlaps with the most
+ * severely — i.e. the named road this OSRM path is actually following.
+ */
+function findMatchedRoad(
+  geometry: [number, number][],
+  predictions: Prediction[],
+): MatchedRoad | null {
+  const THRESHOLD_KM = 0.4
+  const allRoutes = [
+    ...KAMPALA_ROUTES.map((r) => ({ id: r.id, name: r.name, coords: r.coords, congestionIndex: r.congestionIndex, status: r.status })),
+    ...UGANDA_ROUTES.map((r) => ({ id: r.id, name: r.name, coords: r.coords, congestionIndex: r.congestionIndex, status: r.status })),
+  ]
+
+  let best: MatchedRoad | null = null
+
+  for (const route of allRoutes) {
+    const pred = predictions.find((p) => p.routeId === route.id)
+    const congestionIndex = pred?.congestionIndex ?? route.congestionIndex
+    const status = pred?.congestionLevel ?? route.status
+
+    let hits = 0
+    for (let i = 0; i < geometry.length; i += 5) {
+      const pt = geometry[i]
+      for (const rc of route.coords) {
+        if (haversineKm(pt, rc) < THRESHOLD_KM) { hits++; break }
+      }
+    }
+    if (hits === 0) continue
+    if (!best || congestionIndex > best.congestionIndex) {
+      best = { name: route.name, status, congestionIndex }
+    }
+  }
+
+  return best
+}
+
+const STATUS_RANK: Record<string, number> = { CRITICAL: 2, HEAVY: 1 }
+
 /**
  * Pure function — takes raw OSRM routes + latest predictions,
  * returns scored + labelled RouteResult[].
@@ -114,11 +161,17 @@ export function scoreAndLabel(
 ): RouteResult[] {
   if (raw.length === 0) return []
 
-  const scored = raw.map((r) => ({
-    ...r,
-    congestionScore: calcCongestionScore(r.geometry, predictions),
-    label: 'ALTERNATIVE' as RouteResult['label'],
-  }))
+  const scored = raw.map((r) => {
+    const matched = findMatchedRoad(r.geometry, predictions)
+    return {
+      ...r,
+      congestionScore: calcCongestionScore(r.geometry, predictions),
+      label: 'ALTERNATIVE' as RouteResult['label'],
+      matchedRoadName:   matched?.name ?? null,
+      matchedRoadStatus: matched?.status ?? null,
+      avoidsRoad: null as RouteResult['avoidsRoad'],
+    }
+  })
 
   // Shortest by distance
   const shortestIdx = scored.reduce(
@@ -133,6 +186,12 @@ export function scoreAndLabel(
     return score < bestScore ? r.index : best
   }, 0)
 
+  // Among the routes NOT chosen as RECOMMENDED, find the worst (most congested)
+  // named road they pass through — that is what the recommendation is an alternative to.
+  const congestedAlternative = scored
+    .filter((r) => r.index !== recommendedIdx && STATUS_RANK[r.matchedRoadStatus ?? ''])
+    .sort((a, b) => STATUS_RANK[b.matchedRoadStatus ?? ''] - STATUS_RANK[a.matchedRoadStatus ?? ''])[0]
+
   return scored.map((r) => ({
     ...r,
     label: r.index === recommendedIdx
@@ -140,6 +199,9 @@ export function scoreAndLabel(
       : r.index === shortestIdx
         ? 'SHORTEST'
         : 'ALTERNATIVE',
+    avoidsRoad: r.index === recommendedIdx && congestedAlternative
+      ? { name: congestedAlternative.matchedRoadName!, status: congestedAlternative.matchedRoadStatus! }
+      : null,
   }))
 }
 

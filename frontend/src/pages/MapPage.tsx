@@ -506,6 +506,14 @@ export default function MapPage() {
                           <div className="text-xs text-(--text-secondary)">
                             {fmtDist(r.distance)} · {fmtDuration(r.duration)}
                           </div>
+                          {r.label === 'RECOMMENDED' && r.avoidsRoad && (
+                            <div
+                              className="mt-1 text-[10px] px-1.5 py-0.5 rounded inline-block"
+                              style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.25)' }}
+                            >
+                              Avoids {r.avoidsRoad.name} ({r.avoidsRoad.status})
+                            </div>
+                          )}
                         </div>
                         {isActive && <span className="text-[10px] text-(--text-tertiary) shrink-0 mt-0.5">selected</span>}
                       </button>
@@ -726,6 +734,14 @@ export default function MapPage() {
                     <div className="flex-1">
                       <span className="text-xs font-bold mr-2" style={{ color }}>{r.label}</span>
                       <span className="text-xs text-(--text-secondary)">{fmtDist(r.distance)} · {fmtDuration(r.duration)}</span>
+                      {r.label === 'RECOMMENDED' && r.avoidsRoad && (
+                        <div
+                          className="mt-1 text-[10px] px-1.5 py-0.5 rounded inline-block"
+                          style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.25)' }}
+                        >
+                          Avoids {r.avoidsRoad.name} ({r.avoidsRoad.status})
+                        </div>
+                      )}
                     </div>
                     <ScoreBadge score={r.congestionScore} />
                   </button>
